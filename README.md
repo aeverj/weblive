@@ -14,7 +14,9 @@ webinfo使用go语言编写
 
 ### 安装 ###
 
-	go get github.com/aeverj/webinfo
+	git clone https://github.com/aeverj/weblive.git
+	cd weblive
+	go build weblive.go
 
 ### 开始使用
 
