@@ -22,7 +22,7 @@ type Website struct {
 	Title      string
 	StatusCode int
 	Ip         []net.IP
-	Cdn        bool
+	Cdn        string
 	Finger     []string
 }
 type CollyData struct {

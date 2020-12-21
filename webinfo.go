@@ -44,6 +44,7 @@ func getInfoList(info *weblive.Website) []string {
 
 func main() {
 	var wapp = wappalyzer.Init()
+	defer wapp.Geodb.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	t := time.Now().Format("2006-01-02_150405")
@@ -73,7 +74,6 @@ func main() {
 		for reader.Scan() {
 			urlchan <- reader.Text()
 		}
-
 	}()
 
 	for i := 0; i < c.Threads; i++ {

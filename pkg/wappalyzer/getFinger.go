@@ -3,6 +3,7 @@ package wappalyzer
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/x/x/pkg/cdn"
 	"github.com/x/x/pkg/weblive"
 	"io/ioutil"
@@ -42,6 +43,7 @@ type temp struct {
 type wappalyzer struct {
 	Apps       map[string]*application
 	Categories map[string]*category
+	Geodb      *geoip2.Reader
 }
 
 type pattern struct {
@@ -81,7 +83,6 @@ func parsePatterns(patterns interface{}) (result map[string][]*pattern) {
 		parsed["main"] = slice
 	default:
 		return nil
-		//fmt.Printf("Unkown type in parsePatterns: %T\n", ptrn)
 	}
 	result = make(map[string][]*pattern)
 	for k, v := range parsed {
@@ -210,7 +211,12 @@ func Init() *wappalyzer {
 	if err != nil {
 		log.Panic("无法找到文件apps.json")
 	}
+	db, err := geoip2.Open("./GeoLite2-ASN.mmdb")
+	if err != nil {
+		panic("打开IP数据库失败,无法找到文件GeoLite2-ASN.mmdb")
+	}
 	wapp := &wappalyzer{}
+	wapp.Geodb = db
 	wapp.Apps = make(map[string]*application)
 	wapp.Categories = make(map[string]*category)
 	for k, v := range temporary.Apps {
@@ -240,7 +246,7 @@ func (wapp *wappalyzer) Analyze(cData *weblive.CollyData) (result *weblive.Websi
 	website.Title = cData.Title
 	website.Finger = hasapp(cData, wapp)
 	website.Ip = cdn.ResolveIP(website.Redirect.Host)
-	website.Cdn = cdn.Iscdn(website.Ip)
+	website.Cdn = cdn.Iscdn(website.Ip,*wapp.Geodb)
 	result = website
 	return
 }

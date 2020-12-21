@@ -116,27 +116,24 @@ var asns = []uint{
 func ResolveIP(host string) []net.IP {
 	ns, err := net.LookupIP(strings.Split(host,":")[0])
 	if err != nil {
-		panic("解析host错误")
+		return nil
 	}
 	ns = weblive.Set(ns)
 	return ns
 }
 
-func Iscdn(ips []net.IP) bool {
-	db, err := geoip2.Open("./GeoLite2-ASN.mmdb")
-	defer db.Close()
-	if err != nil {
-		panic("打开IP数据库失败,无法找到文件GeoLite2-ASN.mmdb")
+func Iscdn(ips []net.IP,db geoip2.Reader) string {
+	if ips == nil{
+		return ""
 	}
 	for _, ip := range ips {
 		if weblive.IsContainIP(ip, cdns) {
-			return true
+			return "true"
 		}
 		asn, _ := db.ASN(ip)
 		if weblive.IsContainInt(asn.AutonomousSystemNumber, asns) {
-			return true
+			return "true"
 		}
 	}
-
-	return false
+	return "false"
 }

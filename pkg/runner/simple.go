@@ -148,9 +148,6 @@ func (r *SimpleRunner) Execute(req *http.Request, ahost map[string]bool) (*webli
 		}
 
 	}
-	//for k,v := range resp.Request.Cookies(){
-	//	抓取跳转url中的cookie
-	//}
 	cData.Headers = make(map[string][]string)
 	resp.Header.Del("Set-Cookie")
 	for k, v := range resp.Header {
