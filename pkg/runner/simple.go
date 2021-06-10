@@ -89,7 +89,6 @@ func (r *SimpleRunner) newRequest(targetURL string) (req *retryablehttp.Request,
 			}
 		}
 	}
-	fmt.Printf("%v\n",req.Method)
 	req.WithContext(*r.config.Ctx)
 	return
 }
