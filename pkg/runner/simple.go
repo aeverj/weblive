@@ -3,7 +3,6 @@ package runner
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"github.com/antchfx/htmlquery"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/x/x/pkg/weblive"
