@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"github.com/antchfx/htmlquery"
+	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/x/x/pkg/weblive"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"
@@ -11,85 +12,84 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
+	"os"
 	"strings"
 	"time"
 )
 
 type SimpleRunner struct {
-	client *http.Client
-	config *weblive.Config
+	client *retryablehttp.Client
+	config *options
 }
 
-func NewSimpleRunner(conf *weblive.Config) *SimpleRunner {
+func NewSimpleRunner(options *options) *SimpleRunner {
 	var simplerunner SimpleRunner
-	proxyURL := http.ProxyFromEnvironment
-	customProxy := conf.ProxyURL
+	simplerunner.config = options
+	var retryablehttpOptions = retryablehttp.DefaultOptionsSpraying
+	retryablehttpOptions.Timeout = time.Duration(time.Duration(options.Timeout) * time.Second)
+	retryablehttpOptions.RetryMax = 0
 
-	if len(customProxy) > 0 {
-		pu, err := url.Parse(customProxy)
-		if err == nil {
-			proxyURL = http.ProxyURL(pu)
-		}
+	var redirectFunc = func(_ *http.Request, _ []*http.Request) error {
+		return http.ErrUseLastResponse // Tell the http client to not follow redirect
 	}
-
-	simplerunner.config = conf
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		log.Panicln("cookie 设置错误")
-	}
-	simplerunner.client = &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 3 {
-				return http.ErrUseLastResponse
+	if options.ScanOptions.FollowHostRedirects {
+		// Only follow redirects on the same host
+		redirectFunc = func(redirectedRequest *http.Request, previousRequest []*http.Request) error { // timo
+			// Check if we get a redirect to a differen host
+			var newHost = redirectedRequest.URL.Host
+			var oldHost = previousRequest[0].URL.Host
+			if newHost != oldHost {
+				return http.ErrUseLastResponse // Tell the http client to not follow redirect
 			}
 			return nil
-		},
-		Jar:     jar,
-		Timeout: time.Duration(time.Duration(conf.Timeout) * time.Second),
+		}
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		log.Fatalln("Failed to set cookies!")
+	}
+	simplerunner.client = retryablehttp.NewWithHTTPClient(&http.Client{
+		CheckRedirect: redirectFunc,
+		Jar:           jar,
+		Timeout:       time.Duration(time.Duration(options.Timeout) * time.Second),
 		Transport: &http.Transport{
-			Proxy:               proxyURL,
-			MaxIdleConns:        1000,
-			MaxIdleConnsPerHost: 500,
-			MaxConnsPerHost:     500,
+			MaxIdleConnsPerHost: -1,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 				Renegotiation:      tls.RenegotiateOnceAsClient,
 			},
-		}}
-
-	simplerunner.client.CheckRedirect = nil
-
+			DisableKeepAlives: true,
+		}}, retryablehttpOptions)
 	return &simplerunner
 }
 
-func (r *SimpleRunner) Prepare(url string) *http.Request {
-	user_agent := []string{
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/82.0.4083.0 Safari/537.36",
-		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.3538.77 Safari/537.36",
-		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:75.0) Gecko/20100101 Firefox/75.0",
-		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0 Safari/605.1.15",
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/82.0.4080.0 Safari/537.36 Edg/82.0.453.0",
-		"Mozilla/5.0 (Windows NT 10.0; rv:76.0) Gecko/20100101 Firefox/76.0"}
-	rand.Seed(time.Now().UnixNano())
-	node := rand.Intn(6)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Println("url：" + url + " 错误！!!！")
-		return nil
+func (r *SimpleRunner) newRequest(targetURL string) (req *retryablehttp.Request, err error) {
+	if r.config.ScanOptions.RequestBody == "" {
+		req, err = retryablehttp.NewRequest(r.config.ScanOptions.Methods, targetURL, nil)
+	}else {
+		file, _ := os.Open(r.config.ScanOptions.RequestBody)
+		req, err = retryablehttp.NewRequest(r.config.ScanOptions.Methods, targetURL,file)
 	}
-	req.Header.Add("User-Agent", user_agent[node])
-	req.Header.Add("Accept", "*/*")
-	req.Header.Add("Accept-Language", "zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2")
-	req.Header.Add("Accept-Encoding", "text/html")
-	req.Header.Add("Referer", "https://www.google.com/")
-	req.Header.Add("Cache-Control", "Cache-Control")
-	req = req.WithContext(r.config.Context)
-	req.Proto = "HTTP/1.1"
-	return req
+	if err != nil {
+		return nil,err
+	}
+	// set default user agent
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/82.0.4080.0 Safari/537.36 Edg/82.0.453.0")
+	// set default encoding to accept utf8
+	req.Header.Add("Accept-Charset", "utf-8")
+
+	if len(r.config.ScanOptions.CustomHeaders) > 0 {
+		for _,c := range r.config.ScanOptions.CustomHeaders{
+			headers := strings.Split(c,":")
+			if len(headers) == 2 {
+				req.Header.Set(strings.TrimSpace(headers[0]),strings.TrimSpace(headers[1]))
+			}
+		}
+	}
+	req.WithContext(*r.config.Ctx)
+	return
 }
 
 func determineEncoding(r io.Reader) (encoding.Encoding, []byte) {
@@ -97,27 +97,34 @@ func determineEncoding(r io.Reader) (encoding.Encoding, []byte) {
 	if len(content) == 0 {
 		return nil, nil
 	}
-	start := bytes.Index(content,[]byte("title"))
-	if start == -1{
+	start := bytes.Index(content, []byte("title"))
+	if start == -1 {
 		start = 0
 	}
 	e, _, _ := charset.DetermineEncoding(content[start:], "")
 	return e, content
 }
 
-func (r *SimpleRunner) Execute(req *http.Request, ahost map[string]bool) (*weblive.CollyData, error) {
+func (r *SimpleRunner) Execute(targetURL string) (*weblive.CollyData, error) {
+	protocol := ""
+	if strings.Index(targetURL, "http") < 0 {
+		protocol = "https://"
+	}
+retry:
+	req,err := r.newRequest(protocol + targetURL)
+	if err != nil {
+		log.Fatalln(err)
+		return nil,err
+	}
 	resp, err := r.client.Do(req)
 	if err != nil {
+		if protocol == "https://" {
+			protocol = "http://"
+			goto retry
+		}
 		return nil, err
 	}
-	weblive.Lock.Lock()
-	if _, ok := ahost[resp.Request.URL.Host+resp.Request.URL.Scheme]; ok {
-		weblive.Lock.Unlock()
-		return nil, nil
-	} else {
-		ahost[resp.Request.URL.Host+resp.Request.URL.Scheme] = true
-	}
-	weblive.Lock.Unlock()
+	defer resp.Body.Close()
 	cData := &weblive.CollyData{}
 	cData.Url = req.URL
 	cData.Redirect = resp.Request.URL
@@ -128,7 +135,6 @@ func (r *SimpleRunner) Execute(req *http.Request, ahost map[string]bool) (*webli
 		cData.Html = ""
 	} else {
 		ht, _, _ := transform.Bytes(e.NewDecoder(), byteht)
-		defer resp.Body.Close()
 		cData.Html = string(ht)
 	}
 
@@ -176,6 +182,5 @@ func (r *SimpleRunner) Execute(req *http.Request, ahost map[string]bool) (*webli
 			}
 		}
 	}
-
 	return cData, err
 }

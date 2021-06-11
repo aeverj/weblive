@@ -209,11 +209,11 @@ func Init() *wappalyzer {
 	temporary := &temp{}
 	err = json.Unmarshal(appsFile, &temporary)
 	if err != nil {
-		log.Panic("无法找到文件apps.json")
+		log.Fatalln("file `apps.json` not found!")
 	}
 	db, err := geoip2.Open("./GeoLite2-ASN.mmdb")
 	if err != nil {
-		panic("打开IP数据库失败,无法找到文件GeoLite2-ASN.mmdb")
+		log.Fatalln("Failed to open database , file GeoLite2-ASN.mmdb not found!")
 	}
 	wapp := &wappalyzer{}
 	wapp.Geodb = db
