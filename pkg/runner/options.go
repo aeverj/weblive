@@ -3,9 +3,10 @@ package runner
 import (
 	"context"
 	"flag"
-	"github.com/x/x/pkg/weblive"
 	"log"
 	"os"
+	"path/filepath"
+	"weblive/pkg/weblive"
 )
 
 type CustomHeaders []string
@@ -27,6 +28,7 @@ type scanOptions struct {
 	RequestBody         string
 	CustomHeaders       CustomHeaders
 	FollowHostRedirects bool
+	Verbose             bool
 	Timeout             int
 	Ports               string
 }
@@ -51,7 +53,8 @@ func ParseOptions() *options {
 	flag.StringVar(&scoption.RequestPATH, "path", "/", "Request Path")
 	flag.StringVar(&scoption.RequestBody, "dataFile", "", "The Post data file path")
 	flag.BoolVar(&scoption.FollowHostRedirects, "follow_redirects", false, "Follow Redirects")
-	flag.StringVar(&scoption.Ports,"ports","","Custom ports")
+	//flag.BoolVar(&scoption.Verbose, "v", false, "Verbose")
+	flag.StringVar(&scoption.Ports, "ports", "", "Custom ports")
 	flag.StringVar(&options.OutputFile, "output", "", "Output file")
 	flag.Parse()
 	validateOptions(options)
@@ -60,7 +63,8 @@ func ParseOptions() *options {
 
 func validateOptions(opt *options) {
 	if opt.InputFile != "" && !weblive.FileExists(opt.InputFile) {
-		log.Fatalf("File %s does not exist!\n", opt.InputFile)
+		filename := filepath.Base(os.Args[0])
+		log.Fatalf("The -iF parameter is missing.\nExample:\n  %s -iF input.txt", filename)
 	}
 	if opt.ScanOptions.RequestBody != "" {
 		if !weblive.FileExists(opt.ScanOptions.RequestBody) {

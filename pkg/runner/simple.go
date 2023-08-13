@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"github.com/antchfx/htmlquery"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
-	"github.com/x/x/pkg/weblive"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/transform"
@@ -17,6 +16,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"weblive/pkg/weblive"
 )
 
 type SimpleRunner struct {
@@ -68,12 +68,12 @@ func NewSimpleRunner(options *options) *SimpleRunner {
 func (r *SimpleRunner) newRequest(targetURL string) (req *retryablehttp.Request, err error) {
 	if r.config.ScanOptions.RequestBody == "" {
 		req, err = retryablehttp.NewRequest(r.config.ScanOptions.Methods, targetURL, nil)
-	}else {
+	} else {
 		file, _ := os.Open(r.config.ScanOptions.RequestBody)
-		req, err = retryablehttp.NewRequest(r.config.ScanOptions.Methods, targetURL,file)
+		req, err = retryablehttp.NewRequest(r.config.ScanOptions.Methods, targetURL, file)
 	}
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	// set default user agent
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/82.0.4080.0 Safari/537.36 Edg/82.0.453.0")
@@ -81,10 +81,10 @@ func (r *SimpleRunner) newRequest(targetURL string) (req *retryablehttp.Request,
 	req.Header.Add("Accept-Charset", "utf-8")
 
 	if len(r.config.ScanOptions.CustomHeaders) > 0 {
-		for _,c := range r.config.ScanOptions.CustomHeaders{
-			headers := strings.Split(c,":")
+		for _, c := range r.config.ScanOptions.CustomHeaders {
+			headers := strings.Split(c, ":")
 			if len(headers) == 2 {
-				req.Header.Set(strings.TrimSpace(headers[0]),strings.TrimSpace(headers[1]))
+				req.Header.Set(strings.TrimSpace(headers[0]), strings.TrimSpace(headers[1]))
 			}
 		}
 	}
@@ -111,10 +111,10 @@ func (r *SimpleRunner) Execute(targetURL string) (*weblive.CollyData, error) {
 		protocol = "https://"
 	}
 retry:
-	req,err := r.newRequest(protocol + targetURL)
+	req, err := r.newRequest(protocol + targetURL)
 	if err != nil {
 		log.Fatalln(err)
-		return nil,err
+		return nil, err
 	}
 	resp, err := r.client.Do(req)
 	if err != nil {

@@ -7,6 +7,9 @@
 * 获取域名解析的ip，识别cdn，轻量级识别指纹、获取标题
 * 可以自定义app.json文件，进行自定义的指纹识别，[app.json配置教程](https://github.com/AliasIO/wappalyzer)，[最新版app.json下载](https://github.com/AliasIO/wappalyzer/blob/master/src/technologies.json)
 
+更新记录
+* **20230814**：由cdn指纹代替cdn的ip库，单文件编译更便捷
+
 webinfo使用go语言编写
 
 * 发挥`golang`协程优势，快速扫描获取网站全面信息

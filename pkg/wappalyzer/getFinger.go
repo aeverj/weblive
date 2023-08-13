@@ -1,16 +1,20 @@
 package wappalyzer
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/oschwald/geoip2-golang"
-	"github.com/x/x/pkg/cdn"
-	"github.com/x/x/pkg/weblive"
-	"io/ioutil"
 	"log"
 	"regexp"
 	"strings"
+	"weblive/pkg/cdn"
+	"weblive/pkg/weblive"
 )
+
+// 以字符串形式嵌入 assets/hello.txt
+//
+//go:embed apps.json
+var apps []byte
 
 type application struct {
 	Name       string   `json:"name,ompitempty"`
@@ -43,7 +47,6 @@ type temp struct {
 type wappalyzer struct {
 	Apps       map[string]*application
 	Categories map[string]*category
-	Geodb      *geoip2.Reader
 }
 
 type pattern struct {
@@ -204,19 +207,12 @@ func hasapp(cdata *weblive.CollyData, wapp *wappalyzer) []string {
 }
 
 func Init() *wappalyzer {
-	appsJSONPath := "apps.json"
-	appsFile, err := ioutil.ReadFile(appsJSONPath)
 	temporary := &temp{}
-	err = json.Unmarshal(appsFile, &temporary)
+	err := json.Unmarshal(apps, &temporary)
 	if err != nil {
 		log.Fatalln("file `apps.json` not found!")
 	}
-	db, err := geoip2.Open("./GeoLite2-ASN.mmdb")
-	if err != nil {
-		log.Fatalln("Failed to open database , file GeoLite2-ASN.mmdb not found!")
-	}
 	wapp := &wappalyzer{}
-	wapp.Geodb = db
 	wapp.Apps = make(map[string]*application)
 	wapp.Categories = make(map[string]*category)
 	for k, v := range temporary.Apps {
@@ -245,8 +241,7 @@ func (wapp *wappalyzer) Analyze(cData *weblive.CollyData) (result *weblive.Websi
 	website.Redirect = cData.Redirect
 	website.Title = cData.Title
 	website.Finger = hasapp(cData, wapp)
-	website.Ip = cdn.ResolveIP(website.Redirect.Host)
-	website.Cdn = cdn.Iscdn(website.Ip,*wapp.Geodb)
+	website.Cdn, website.Ip, _ = cdn.Resolve(strings.Split(cData.Url.Host, ":")[0])
 	result = website
 	return
 }
