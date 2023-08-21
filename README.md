@@ -85,3 +85,6 @@ weblive -path /admin/login.html
 | https://github.com       | https://github.com       | The  world’s leading software development platform · GitHub | 200         | 13.250.177.223            | false | Ruby on  Rails,GitHub Pages,Bootstrap                        |
 | https://studygolang.com/ | https://studygolang.com/ | 首页 -  Go语言中文网 - Golang中文社区                       | 200         | 59.110.219.94             | false | jQuery,Bootstrap,Google  AdSense,Marked,Gravatar,Nginx,Font Awesome |
 
+### TODO
+- [ ] 对存活的网站进行截图
+- [ ] 导出结果增加html格式
