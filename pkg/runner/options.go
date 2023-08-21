@@ -45,7 +45,7 @@ type options struct {
 func ParseOptions() *options {
 	scoption := &scanOptions{}
 	options := &options{ScanOptions: scoption}
-	flag.StringVar(&options.InputFile, "iF", "input.txt", "Load urls from file")
+	flag.StringVar(&options.InputFile, "iF", "", "Load urls from file")
 	flag.IntVar(&options.Timeout, "timeout", 3, "Timeout in seconds")
 	flag.IntVar(&options.Threads, "threads", 50, "Number of threads")
 	flag.Var(&scoption.CustomHeaders, "H", "Custom Header")
@@ -62,9 +62,9 @@ func ParseOptions() *options {
 }
 
 func validateOptions(opt *options) {
-	if opt.InputFile != "" && !weblive.FileExists(opt.InputFile) {
+	if opt.InputFile == "" || !weblive.FileExists(opt.InputFile) {
 		filename := filepath.Base(os.Args[0])
-		log.Fatalf("The -iF parameter is missing.\nExample:\n  %s -iF input.txt", filename)
+		log.Fatalf("The -iF parameter is missing or file does not exist.\nExample:\n  %s -iF input.txt", filename)
 	}
 	if opt.ScanOptions.RequestBody != "" {
 		if !weblive.FileExists(opt.ScanOptions.RequestBody) {

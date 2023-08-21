@@ -9,7 +9,6 @@ import (
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/transform"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -93,7 +92,7 @@ func (r *SimpleRunner) newRequest(targetURL string) (req *retryablehttp.Request,
 }
 
 func determineEncoding(r io.Reader) (encoding.Encoding, []byte) {
-	content, _ := ioutil.ReadAll(r)
+	content, _ := io.ReadAll(r)
 	if len(content) == 0 {
 		return nil, nil
 	}
@@ -101,7 +100,7 @@ func determineEncoding(r io.Reader) (encoding.Encoding, []byte) {
 	if start == -1 {
 		start = 0
 	}
-	e, _, _ := charset.DetermineEncoding(content[start:], "")
+	e, _, _ := charset.DetermineEncoding(content, "")
 	return e, content
 }
 
