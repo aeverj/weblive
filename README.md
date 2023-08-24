@@ -56,7 +56,7 @@ Usage of webinfo.exe:
 #### 直接使用
 ```
 将待扫描目标放到当前目录下input.txt文件中，执行程序
-weblive
+weblive -iF input.txt
 ```
 #### 自定义header
 ```
