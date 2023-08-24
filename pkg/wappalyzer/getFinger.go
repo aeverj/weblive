@@ -150,7 +150,7 @@ func hasapp(cdata *weblive.CollyData, wapp *wappalyzer) []string {
 
 			}
 		}
-		if app.Cookies != nil {
+		if app.Cookies != nil && len(cdata.Cookies) > 0 {
 			patterns := parsePatterns(app.Cookies)
 			for cookieName, _ := range patterns {
 				cookieNameLowerCase := strings.ToLower(cookieName)
@@ -176,7 +176,7 @@ func hasapp(cdata *weblive.CollyData, wapp *wappalyzer) []string {
 				}
 			}
 		}
-		if app.Scripts != nil {
+		if app.Scripts != nil && cdata.Scripts != nil {
 			patterns := parsePatterns(app.Scripts)
 			for _, v := range patterns {
 				for _, pattrn := range v {
@@ -190,16 +190,14 @@ func hasapp(cdata *weblive.CollyData, wapp *wappalyzer) []string {
 				}
 			}
 		}
-		if app.Meta != nil {
+		if app.Meta != nil && len(cdata.Meta) > 0 {
 			patterns := parsePatterns(app.Meta)
-			for metaName, v := range patterns {
+			for metaName, _ := range patterns {
 				metaNameLowerCase := strings.ToLower(metaName)
-				for _, patten := range v {
-					if value, ok := cdata.Meta[metaNameLowerCase]; ok && patten.regex.Match([]byte(value)) {
-						result = appendResult(app, result)
-					}
+				_, ok := cdata.Meta[metaNameLowerCase]
+				if ok {
+					result = appendResult(app, result)
 				}
-
 			}
 		}
 	}
@@ -234,7 +232,6 @@ func Init() *wappalyzer {
 }
 
 func (wapp *wappalyzer) Analyze(cData *weblive.CollyData) (result *weblive.Website) {
-
 	website := &weblive.Website{}
 	website.Url = cData.Url
 	website.StatusCode = cData.StatusCode

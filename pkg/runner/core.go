@@ -34,6 +34,8 @@ func Run() {
 	// Check if the folder named "result" exist
 	os.Mkdir("result", 0766)
 	nfs, err := os.OpenFile(options.OutputFile, os.O_RDWR|os.O_CREATE, 0666)
+	// BOM header, solve excel garbled problem
+	nfs.WriteString("\xEF\xBB\xBF")
 	if err != nil {
 		log.Fatalf("can not create file, err is %+v", err)
 	}
