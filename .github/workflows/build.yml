@@ -1,0 +1,27 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: build-go-binary
+
+on:
+  release:
+    types: [created] # 表示在创建新的 Release 时触发
+  workflow_dispatch: # 允许手动触发工作流
+
+jobs:
+  build-go-binary:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [windows, linux] # 需要打包的系统
+        goarch: [amd64, arm64] # 需要打包的架构
+    steps:
+      - uses: actions/checkout@v3
+      - uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }} # 一个默认的变量，用来实现往 Release 中添加文件
+          project_path: ./cmd/
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          goversion: 1.22 
+          extra_files: README.md # 需要包含的额外文件
