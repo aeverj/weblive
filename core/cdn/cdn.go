@@ -5,20 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/miekg/dns"
-	"log"
 	"net"
-	"os"
 	"strings"
 	"time"
-	"weblive/pkg/weblive"
+	"weblive/common/mlogger"
 )
 
 //go:embed cdn.json
 var apps []byte
-
-//type CDN struct {
-//	Item map[string]*Info
-//}
 
 type CDN struct {
 	Name string `json:"name"`
@@ -30,22 +24,23 @@ var cdnMap map[string]CDN
 func init() {
 	err := json.Unmarshal(apps, &cdnMap)
 	if err != nil {
-		log.Fatalf("apps.json is error: %s", err)
+		mlogger.Error(fmt.Sprintf("cdn.json is error: %s", err))
 	}
 }
 
 func ResolveIP(host string) []net.IP {
 	ns, err := net.LookupIP(strings.Split(host, ":")[0])
 	if err != nil {
+		mlogger.Warn(fmt.Sprintf("ResolveIP err: %s", err))
 		return nil
 	}
-	ns = weblive.Set(ns)
 	return ns
 }
 
-func Resolve(src string) (cdn string, dstIP []net.IP, err error) {
+func Resolve(src string) (cdn string, dstIP string, err error) {
 	var lastErr error
 	var cnameList []string
+	var tmpIP []string
 	for i := 0; i < 3; i++ {
 		c := new(dns.Client)
 		m := new(dns.Msg)
@@ -67,7 +62,7 @@ func Resolve(src string) (cdn string, dstIP []net.IP, err error) {
 			case dns.TypeA:
 				record, isType := ans.(*dns.A)
 				if isType {
-					dstIP = append(dstIP, record.A)
+					tmpIP = append(tmpIP, record.A.String())
 				}
 			}
 		}
@@ -75,6 +70,7 @@ func Resolve(src string) (cdn string, dstIP []net.IP, err error) {
 		break
 	}
 	err = lastErr
+	dstIP = strings.Join(tmpIP, ", ")
 	for _, v := range cnameList {
 		for cdnk, cdnv := range cdnMap {
 			if strings.Contains(v, cdnk) {
@@ -84,31 +80,9 @@ func Resolve(src string) (cdn string, dstIP []net.IP, err error) {
 		}
 	}
 	if len(dstIP) > 1 {
-		cdn = "无法判断"
+		cdn = "unknown"
 	} else {
-		cdn = "无"
+		cdn = "no"
 	}
 	return
-}
-
-func Mdns() {
-	//config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-	c := new(dns.Client)
-
-	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn("crm.cscec.com"), dns.TypeA)
-	m.RecursionDesired = true
-
-	r, _, err := c.Exchange(m, "223.5.5.5:53")
-	if r == nil {
-		log.Fatalf("*** error: %s\n", err.Error())
-	}
-
-	if r.Rcode != dns.RcodeSuccess {
-		log.Fatalf(" *** invalid answer name %s after MX query for %s\n", os.Args[1], os.Args[1])
-	}
-	// Stuff must be in the answer section
-	for _, a := range r.Answer {
-		fmt.Printf("%v\n", a)
-	}
 }
