@@ -39,10 +39,35 @@ To get started with WebLive, follow these steps:
 
 WebLive can be configured using command-line options. Here are some of the available options:
 
-- `-th`: Number of threads (default: 30)
-- `-i`: Input file path containing URLs
-- `-o`: Output type (html or csv)
-- `-timeout`: Request timeout in seconds (default: 10)
+```bash
+./weblive -h                        
+Usage of ./weblive:
+  -H value
+        Custom Header
+  -M string
+        Request Method (default "GET")
+  -body_path string
+        Url path (default "/")
+  -bth int
+        Number of browser threads (default 6)
+  -data_file string
+        The Post data file path
+  -e string
+        Chrome executable file path
+  -follow_redirects
+        Follow Redirects
+  -i string
+        Input file path
+  -o string
+        Output type; html or csv (default "html")
+  -ports string
+        Custom ports (default "80,443")
+  -th int
+        Number of threads (default 30)
+  -timeout int
+        Number of timeout (default 10)
+  -v    Verbose
+```
 
 ### Example Command
 ```bash
